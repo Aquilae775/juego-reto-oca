@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -11,7 +10,7 @@
       text-align: center;
       padding: 20px;
     }
-    h1 { color: #d35400; }
+    h1, h2 { color: #d35400; }
     .tablero {
       display: grid;
       grid-template-columns: repeat(9, 60px);
@@ -56,15 +55,30 @@
       max-height: 150px;
       overflow-y: auto;
     }
+    #configuracion input {
+      margin: 5px; padding: 8px; border-radius: 5px; border: 1px solid #ccc;
+    }
   </style>
 </head>
 <body>
   <h1>Juego de Retos con Amigos - Estilo Oca</h1>
+
+  <div id="configuracion">
+    <h2>Configura a los jugadores</h2>
+    <div id="jugadoresConfig"></div>
+    <button class="btn" onclick="iniciarJuego()">Empezar juego</button>
+  </div>
+
   <div class="turno" id="turnoJugador">Turno del jugador 1</div>
   <button class="btn" id="btnDado" onclick="lanzarDado()">Lanzar dado</button>
   <button class="btn" onclick="reiniciarJuego()">Reiniciar juego</button>
   <div class="dado" id="dadoResultado">Resultado: -</div>
   <div class="reto" id="retoTexto">Lanza el dado para comenzar.</div>
+  <div id="votacion" style="display:none;">
+    <p>¿El jugador superó el reto?</p>
+    <button class="btn" onclick="votar(true)">✅ Sí</button>
+    <button class="btn" onclick="votar(false)">❌ No</button>
+  </div>
   <div class="tablero" id="tablero"></div>
   <div class="victoria" id="pantallaVictoria"></div>
   <div class="historial" id="historial"></div>
@@ -90,12 +104,44 @@
         return `Reto Flash: En 5 segundos, encuentra algo de color ${color} y tráelo. Si no lo logras, retrocedes 2 casillas.`;
       },
       () => {
-        const pista = 'Emoji Misterioso: piensa uno y da pistas. Si alguien lo adivina, ¡avanzas 1 casilla! Si nadie lo adivina, retrocedes 2.';
-        return pista;
+        return 'Emoji Misterioso: piensa uno y da pistas. Si alguien lo adivina, ¡avanzas 1 casilla! Si nadie lo adivina, retrocedes 2.';
       },
       "Tú mandas: Inventa un reto para otro jugador.",
       "Reacción en cadena: Di una palabra. El siguiente jugador debe decir una relacionada. ¡No repitas ni tardes más de 3 segundos! Si alguien falla, retrocede 2 casillas."
     ];
+
+    window.onload = () => {
+      const contenedor = document.getElementById('jugadoresConfig');
+      for (let i = 0; i < numJugadores; i++) {
+        contenedor.innerHTML += `
+          <div>
+            <input type="text" placeholder="Nombre Jugador ${i + 1}" id="nombre${i}" />
+            <input type="text" placeholder="Emoji o ícono (ej: 🐢)" maxlength="2" id="icono${i}" />
+          </div>
+        `;
+      }
+      document.getElementById("tablero").style.display = "none";
+      document.getElementById("btnDado").style.display = "none";
+      document.querySelectorAll(".turno, .reto, .dado, .historial, .victoria, button[onclick='reiniciarJuego()']")
+        .forEach(el => el.style.display = "none");
+    };
+
+    function iniciarJuego() {
+      for (let i = 0; i < numJugadores; i++) {
+        const nombre = document.getElementById(`nombre${i}`).value.trim();
+        const icono = document.getElementById(`icono${i}`).value.trim();
+        if (nombre) nombres[i] = nombre;
+        if (icono) fichas[i] = icono;
+      }
+
+      document.getElementById("configuracion").style.display = "none";
+      document.getElementById("tablero").style.display = "grid";
+      document.getElementById("btnDado").style.display = "inline-block";
+      document.querySelectorAll(".turno, .reto, .dado, .historial, .victoria, button[onclick='reiniciarJuego()']")
+        .forEach(el => el.style.display = "block");
+
+      crearTablero();
+    }
 
     function lanzarDado() {
       if (pierdeTurno[turno] > 0) {
@@ -145,11 +191,21 @@
       const reto = retos[Math.floor(Math.random() * retos.length)];
       const texto = typeof reto === 'function' ? reto() : reto;
       document.getElementById("retoTexto").textContent = texto;
+      document.getElementById("votacion").style.display = "block";
+    }
 
-      if (texto.includes("avanzas 1 casilla")) {
-        posiciones[turno] = Math.min(posiciones[turno] + 1, totalCasillas);
-      } else if (texto.includes("retrocedes 2")) {
-        posiciones[turno] = Math.max(posiciones[turno] - 2, 1);
+    function votar(resultado) {
+      document.getElementById("votacion").style.display = "none";
+      let texto = document.getElementById("retoTexto").textContent;
+
+      if (resultado) {
+        if (texto.includes("avanzas")) {
+          posiciones[turno] = Math.min(posiciones[turno] + 1, totalCasillas);
+        }
+      } else {
+        if (texto.includes("retrocedes")) {
+          posiciones[turno] = Math.max(posiciones[turno] - 2, 1);
+        }
       }
 
       renderFichas();
@@ -177,6 +233,7 @@
 
     function crearTablero() {
       const tablero = document.getElementById("tablero");
+      tablero.innerHTML = "";
       for (let i = 1; i <= totalCasillas; i++) {
         const casilla = document.createElement("div");
         casilla.className = "casilla" + ((casillasOca.includes(i) || ocasTraviesas.includes(i)) ? " especial" : "");
@@ -205,8 +262,6 @@
       const historialDiv = document.getElementById("historial");
       historialDiv.innerHTML = historialMovimientos.slice(-10).map(t => `<div>${t}</div>`).join("");
     }
-
-    crearTablero();
   </script>
 </body>
 </html>
