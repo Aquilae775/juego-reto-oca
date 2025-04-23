@@ -1,0 +1,212 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Juego de Retos - Estilo Oca Extendido</title>
+  <style>
+    body {
+      font-family: 'Comic Sans MS', cursive;
+      background: linear-gradient(#fff7e6, #ffe6cc);
+      text-align: center;
+      padding: 20px;
+    }
+    h1 { color: #d35400; }
+    .tablero {
+      display: grid;
+      grid-template-columns: repeat(9, 60px);
+      grid-template-rows: repeat(7, 60px);
+      gap: 4px;
+      justify-content: center;
+      margin: 20px auto;
+    }
+    .casilla {
+      width: 60px; height: 60px;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid #8e44ad; border-radius: 10px;
+      font-weight: bold;
+      background-color: #dcd6f7;
+      position: relative;
+    }
+    .especial { background-color: #fad390; }
+    .ficha {
+      font-size: 20px;
+      position: absolute;
+    }
+    .turno, .btn, .reto, .dado {
+      margin: 10px auto;
+    }
+    .btn {
+      padding: 10px 20px; font-size: 16px;
+      background-color: #ff9f43; border: none; border-radius: 10px; color: white;
+      cursor: pointer;
+    }
+    .reto {
+      background: #f8c291; border: 2px dashed #e17055; padding: 15px; border-radius: 10px; width: 70%;
+    }
+    .victoria {
+      font-size: 30px; font-weight: bold;
+      color: #27ae60; margin-top: 30px;
+    }
+    .historial {
+      margin-top: 20px;
+      background: #ffeaa7;
+      padding: 10px;
+      border-radius: 10px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Juego de Retos con Amigos - Estilo Oca</h1>
+  <div class="turno" id="turnoJugador">Turno del jugador 1</div>
+  <button class="btn" id="btnDado" onclick="lanzarDado()">Lanzar dado</button>
+  <button class="btn" onclick="reiniciarJuego()">Reiniciar juego</button>
+  <div class="dado" id="dadoResultado">Resultado: -</div>
+  <div class="reto" id="retoTexto">Lanza el dado para comenzar.</div>
+  <div class="tablero" id="tablero"></div>
+  <div class="victoria" id="pantallaVictoria"></div>
+  <div class="historial" id="historial"></div>
+
+  <script>
+    const totalCasillas = 63;
+    const numJugadores = 5;
+    let posiciones = Array(numJugadores).fill(1);
+    const fichas = ['👠','🐻','🧢','🐸','🕶️'];
+    let nombres = ['Jugador 1', 'Jugador 2', 'Jugador 3', 'Jugador 4', 'Jugador 5'];
+    let turno = 0;
+    let pierdeTurno = Array(numJugadores).fill(0);
+    let historialMovimientos = [];
+
+    const casillasOca = [6, 12, 18, 24, 30, 36, 42, 48, 54, 60];
+    const ocasTraviesas = [13, 22, 31, 41, 52];
+
+    const retos = [
+      "Pose de Yoga: Elige a otro jugador y hagan una pose juntos. Si lo logran, avancen 2 casillas.",
+      () => {
+        const colores = ['azul', 'rojo', 'verde', 'amarillo', 'naranja', 'rosa'];
+        const color = colores[Math.floor(Math.random() * colores.length)];
+        return `Reto Flash: En 5 segundos, encuentra algo de color ${color} y tráelo. Si no lo logras, retrocedes 2 casillas.`;
+      },
+      () => {
+        const pista = 'Emoji Misterioso: piensa uno y da pistas. Si alguien lo adivina, ¡avanzas 1 casilla! Si nadie lo adivina, retrocedes 2.';
+        return pista;
+      },
+      "Tú mandas: Inventa un reto para otro jugador.",
+      "Reacción en cadena: Di una palabra. El siguiente jugador debe decir una relacionada. ¡No repitas ni tardes más de 3 segundos! Si alguien falla, retrocede 2 casillas."
+    ];
+
+    function lanzarDado() {
+      if (pierdeTurno[turno] > 0) {
+        document.getElementById("retoTexto").textContent = `${nombres[turno]} pierde su turno (${pierdeTurno[turno]} restantes).`;
+        pierdeTurno[turno]--;
+        siguienteTurno();
+        return;
+      }
+
+      const dado = Math.floor(Math.random() * 6) + 1;
+      document.getElementById("dadoResultado").textContent = "Resultado: " + dado;
+      moverFicha(dado);
+    }
+
+    function moverFicha(avance) {
+      let pos = posiciones[turno] + avance;
+      if (pos > totalCasillas) pos = totalCasillas;
+
+      if (pos === totalCasillas) {
+        document.getElementById("pantallaVictoria").textContent = `🎉 ¡${nombres[turno]} ha ganado! 🎉`;
+        document.getElementById("btnDado").disabled = true;
+        return;
+      }
+
+      if (casillasOca.includes(pos)) {
+        let idx = casillasOca.indexOf(pos);
+        const siguienteOca = casillasOca[idx + 1] || pos;
+        posiciones[turno] = siguienteOca;
+        renderFichas();
+        agregarHistorial(`${nombres[turno]} cayó en una oca y avanza a la ${siguienteOca}`);
+        document.getElementById("retoTexto").textContent = `🦢 De oca a oca: avanzas a la casilla ${siguienteOca} y tiras de nuevo.`;
+        return;
+      }
+
+      if (ocasTraviesas.includes(pos)) {
+        pierdeTurno[turno] = 2;
+        document.getElementById("retoTexto").textContent = `🦢 Oca traviesa: pierdes dos turnos.`;
+        agregarHistorial(`${nombres[turno]} cayó en una oca traviesa.`);
+      }
+
+      posiciones[turno] = pos;
+      renderFichas();
+      mostrarReto(pos);
+    }
+
+    function mostrarReto(pos) {
+      const reto = retos[Math.floor(Math.random() * retos.length)];
+      const texto = typeof reto === 'function' ? reto() : reto;
+      document.getElementById("retoTexto").textContent = texto;
+
+      if (texto.includes("avanzas 1 casilla")) {
+        posiciones[turno] = Math.min(posiciones[turno] + 1, totalCasillas);
+      } else if (texto.includes("retrocedes 2")) {
+        posiciones[turno] = Math.max(posiciones[turno] - 2, 1);
+      }
+
+      renderFichas();
+      agregarHistorial(`${nombres[turno]} está en la casilla ${posiciones[turno]}`);
+      siguienteTurno();
+    }
+
+    function siguienteTurno() {
+      turno = (turno + 1) % numJugadores;
+      document.getElementById("turnoJugador").textContent = `Turno de ${nombres[turno]}`;
+    }
+
+    function renderFichas() {
+      document.querySelectorAll('.ficha').forEach(f => f.remove());
+      posiciones.forEach((pos, i) => {
+        const casilla = document.getElementById("casilla-" + pos);
+        if (casilla) {
+          const ficha = document.createElement("div");
+          ficha.className = "ficha";
+          ficha.textContent = fichas[i];
+          casilla.appendChild(ficha);
+        }
+      });
+    }
+
+    function crearTablero() {
+      const tablero = document.getElementById("tablero");
+      for (let i = 1; i <= totalCasillas; i++) {
+        const casilla = document.createElement("div");
+        casilla.className = "casilla" + ((casillasOca.includes(i) || ocasTraviesas.includes(i)) ? " especial" : "");
+        casilla.id = "casilla-" + i;
+        casilla.textContent = i;
+        tablero.appendChild(casilla);
+      }
+      renderFichas();
+    }
+
+    function reiniciarJuego() {
+      posiciones = Array(numJugadores).fill(1);
+      turno = 0;
+      pierdeTurno = Array(numJugadores).fill(0);
+      historialMovimientos = [];
+      document.getElementById("pantallaVictoria").textContent = '';
+      document.getElementById("btnDado").disabled = false;
+      document.getElementById("dadoResultado").textContent = 'Resultado: -';
+      document.getElementById("retoTexto").textContent = 'Lanza el dado para comenzar.';
+      document.getElementById("historial").textContent = '';
+      renderFichas();
+    }
+
+    function agregarHistorial(texto) {
+      historialMovimientos.push(texto);
+      const historialDiv = document.getElementById("historial");
+      historialDiv.innerHTML = historialMovimientos.slice(-10).map(t => `<div>${t}</div>`).join("");
+    }
+
+    crearTablero();
+  </script>
+</body>
+</html>
